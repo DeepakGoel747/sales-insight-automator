@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sales Insight Automator · Rabbitt AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:         #070b14;
+      --surface:    #0d1424;
+      --surface2:   #141d30;
+      --border:     rgba(255,255,255,.07);
+      --orange:     #f97316;
+      --orange-dim: rgba(249,115,22,.15);
+      --orange-glow:rgba(249,115,22,.35);
+      --teal:       #2dd4bf;
+      --teal-dim:   rgba(45,212,191,.12);
+      --text:       #e2e8f0;
+      --muted:      #64748b;
+      --error:      #f43f5e;
+      --success:    #10b981;
+      --radius:     12px;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 15px;
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    /* ── Noise grain overlay ── */
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 999;
+    }
+
+    /* ── Background radial glow ── */
+    .bg-glow {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(80px);
+      pointer-events: none;
+      opacity: .35;
+      z-index: 0;
+    }
+    .bg-glow-1 {
+      width: 600px; height: 600px;
+      background: radial-gradient(circle, rgba(249,115,22,.3) 0%, transparent 70%);
+      top: -200px; left: -150px;
+      animation: float1 12s ease-in-out infinite alternate;
+    }
+    .bg-glow-2 {
+      width: 500px; height: 500px;
+      background: radial-gradient(circle, rgba(45,212,191,.2) 0%, transparent 70%);
+      bottom: -100px; right: -100px;
+      animation: float2 15s ease-in-out infinite alternate;
+    }
+    @keyframes float1 { from { transform: translate(0,0); } to { transform: translate(60px,40px); } }
+    @keyframes float2 { from { transform: translate(0,0); } to { transform: translate(-40px,-60px); } }
+
+    /* ── Layout ── */
+    .app {
+      position: relative;
+      z-index: 1;
+      min-height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      max-width: 780px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* ── Header ── */
+    header {
+      padding: 36px 0 28px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      border-bottom: 1px solid var(--border);
+      animation: fadeDown .5s ease both;
+    }
+    .logo-pill {
+      background: var(--orange-dim);
+      border: 1px solid var(--orange-glow);
+      border-radius: 8px;
+      padding: 8px 14px;
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 18px;
+      color: var(--orange);
+      letter-spacing: .5px;
+      position: relative;
+      overflow: hidden;
+    }
+    .logo-pill::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,.06) 0%, transparent 60%);
+    }
+    header h1 {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 20px;
+      color: var(--text);
+      letter-spacing: -.2px;
+    }
+    header p {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 1px;
+      font-family: 'DM Mono', monospace;
+    }
+
+    /* ── Main ── */
+    main { padding: 40px 0; }
+
+    .tagline {
+      margin-bottom: 36px;
+      animation: fadeDown .5s .1s ease both;
+    }
+    .tagline h2 {
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(28px, 5vw, 42px);
+      font-weight: 800;
+      line-height: 1.15;
+      letter-spacing: -1px;
+      background: linear-gradient(135deg, #e2e8f0 20%, var(--orange) 80%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 10px;
+    }
+    .tagline p {
+      color: var(--muted);
+      font-size: 14px;
+      max-width: 480px;
+    }
+
+    /* ── Card ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 32px;
+      animation: fadeUp .5s .2s ease both;
+      position: relative;
+      overflow: hidden;
+    }
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--orange-glow), transparent);
+    }
+
+    /* ── Steps indicator ── */
+    .steps {
+      display: flex;
+      gap: 0;
+      margin-bottom: 32px;
+    }
+    .step {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      position: relative;
+    }
+    .step:not(:last-child)::after {
+      content: '';
+      position: absolute;
+      top: 14px; left: 50%; right: 0;
+      width: calc(100% - 28px);
+      margin-left: 14px;
+      height: 1px;
+      background: var(--border);
+    }
+    .step.done:not(:last-child)::after { background: var(--orange); }
+    .step-dot {
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+      background: var(--surface2);
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      color: var(--muted);
+      transition: all .3s;
+      z-index: 1;
+    }
+    .step.active .step-dot {
+      border-color: var(--orange);
+      background: var(--orange-dim);
+      color: var(--orange);
+      box-shadow: 0 0 12px var(--orange-glow);
+    }
+    .step.done .step-dot {
+      border-color: var(--success);
+      background: rgba(16,185,129,.15);
+      color: var(--success);
+    }
+    .step-label {
+      font-size: 10px;
+      color: var(--muted);
+      font-family: 'DM Mono', monospace;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+    }
+    .step.active .step-label { color: var(--orange); }
+    .step.done .step-label   { color: var(--success); }
+
+    /* ── Form fields ── */
+    .field {
+      margin-bottom: 20px;
+    }
+    label {
+      display: block;
+      font-size: 12px;
+      font-family: 'DM Mono', monospace;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      margin-bottom: 8px;
+    }
+    label span.req { color: var(--orange); }
+
+    input[type="email"],
+    input[type="text"] {
+      width: 100%;
+      padding: 12px 16px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      outline: none;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    input:focus {
+      border-color: var(--orange);
+      box-shadow: 0 0 0 3px var(--orange-dim);
+    }
+    input::placeholder { color: var(--muted); }
+
+    /* ── Drop zone ── */
+    .drop-zone {
+      border: 2px dashed var(--border);
+      border-radius: 10px;
+      padding: 36px 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: all .25s;
+      background: var(--surface2);
+      position: relative;
+      overflow: hidden;
+    }
+    .drop-zone:hover,
+    .drop-zone.dragover {
+      border-color: var(--orange);
+      background: var(--orange-dim);
+      box-shadow: inset 0 0 24px var(--orange-dim);
+    }
+    .drop-zone.has-file {
+      border-color: var(--teal);
+      background: var(--teal-dim);
+    }
+    .drop-zone input[type="file"] {
+      position: absolute; inset: 0;
+      opacity: 0; cursor: pointer;
+      width: 100%; height: 100%;
+    }
+    .drop-icon {
+      font-size: 36px;
+      margin-bottom: 10px;
+      display: block;
+      transition: transform .3s;
+    }
+    .drop-zone:hover .drop-icon { transform: scale(1.15) translateY(-2px); }
+    .drop-title {
+      font-family: 'Syne', sans-serif;
+      font-weight: 600;
+      font-size: 15px;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+    .drop-sub {
+      font-size: 12px;
+      color: var(--muted);
+      font-family: 'DM Mono', monospace;
+    }
+    .file-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(45,212,191,.15);
+      border: 1px solid rgba(45,212,191,.3);
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-size: 12px;
+      color: var(--teal);
+      font-family: 'DM Mono', monospace;
+      margin-top: 10px;
+    }
+
+    /* ── Submit button ── */
+    .btn-submit {
+      width: 100%;
+      padding: 15px;
+      background: var(--orange);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 15px;
+      letter-spacing: .3px;
+      cursor: pointer;
+      transition: all .2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      position: relative;
+      overflow: hidden;
+      margin-top: 8px;
+    }
+    .btn-submit::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,.1) 0%, transparent 60%);
+    }
+    .btn-submit:hover:not(:disabled) {
+      background: #ea6d0c;
+      transform: translateY(-1px);
+      box-shadow: 0 8px 24px var(--orange-glow);
+    }
+    .btn-submit:active:not(:disabled) { transform: translateY(0); }
+    .btn-submit:disabled {
+      opacity: .5;
+      cursor: not-allowed;
+    }
+
+    /* ── Spinner ── */
+    .spinner {
+      width: 18px; height: 18px;
+      border: 2px solid rgba(255,255,255,.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Toast / Status banner ── */
+    .toast {
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin-top: 20px;
+      font-size: 14px;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      animation: fadeUp .3s ease both;
+    }
+    .toast.success {
+      background: rgba(16,185,129,.1);
+      border: 1px solid rgba(16,185,129,.3);
+      color: #6ee7b7;
+    }
+    .toast.error {
+      background: rgba(244,63,94,.1);
+      border: 1px solid rgba(244,63,94,.3);
+      color: #fda4af;
+    }
+    .toast-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+    .toast-body strong { display: block; font-weight: 600; margin-bottom: 2px; }
+    .toast-body p { font-size: 13px; opacity: .85; }
+
+    /* ── Preview box ── */
+    .preview-box {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      margin-top: 16px;
+      font-size: 12px;
+      font-family: 'DM Mono', monospace;
+      color: var(--muted);
+      line-height: 1.7;
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 160px;
+      overflow-y: auto;
+    }
+    .preview-box::-webkit-scrollbar { width: 4px; }
+    .preview-box::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+    /* ── Stats row ── */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-top: 16px;
+    }
+    .stat-card {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 14px;
+      text-align: center;
+    }
+    .stat-value {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 22px;
+      color: var(--orange);
+    }
+    .stat-label {
+      font-size: 10px;
+      color: var(--muted);
+      font-family: 'DM Mono', monospace;
+      text-transform: uppercase;
+      margin-top: 2px;
+    }
+
+    /* ── Footer ── */
+    footer {
+      padding: 20px 0;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      color: var(--muted);
+      font-family: 'DM Mono', monospace;
+      animation: fadeUp .5s .4s ease both;
+    }
+    .footer-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--success);
+      display: inline-block;
+      margin-right: 6px;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%,100% { box-shadow: 0 0 0 0 rgba(16,185,129,.5); }
+      50%      { box-shadow: 0 0 0 5px rgba(16,185,129,0); }
+    }
+
+    /* ── Progress bar ── */
+    .progress-bar-wrap {
+      height: 3px;
+      background: var(--surface2);
+      border-radius: 2px;
+      overflow: hidden;
+      margin-top: 16px;
+    }
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, var(--orange), var(--teal));
+      border-radius: 2px;
+      animation: progress 2.5s ease infinite;
+      transform-origin: left;
+    }
+    @keyframes progress {
+      0%   { width: 0%; }
+      60%  { width: 80%; }
+      100% { width: 95%; }
+    }
+
+    /* ── Animations ── */
+    @keyframes fadeDown {
+      from { opacity:0; transform: translateY(-12px); }
+      to   { opacity:1; transform: translateY(0); }
+    }
+    @keyframes fadeUp {
+      from { opacity:0; transform: translateY(12px); }
+      to   { opacity:1; transform: translateY(0); }
+    }
+
+    /* ── Security badge strip ── */
+    .sec-strip {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 24px;
+    }
+    .sec-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      padding: 4px 10px;
+      font-size: 11px;
+      color: var(--muted);
+      font-family: 'DM Mono', monospace;
+    }
+    .sec-badge span { font-size: 12px; }
+
+    @media (max-width: 520px) {
+      .app { padding: 0 16px; }
+      .card { padding: 24px 18px; }
+      .stats-row { grid-template-columns: repeat(2, 1fr); }
+      .steps { display: none; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="bg-glow bg-glow-1"></div>
+  <div class="bg-glow bg-glow-2"></div>
+
+  <div class="app">
+    <!-- HEADER -->
+    <header>
+      <div class="logo-pill">🐇 RABBITT</div>
+      <div>
+        <h1>Sales Insight Automator</h1>
+        <p>AI-powered · Executive Briefing System · v1.0</p>
+      </div>
+    </header>
+
+    <!-- MAIN -->
+    <main>
+      <div class="tagline">
+        <h2>Turn raw data into<br>executive intelligence.</h2>
+        <p>Upload your quarterly CSV or Excel file. Our AI engine analyses, summarises, and dispatches a professional brief — straight to the inbox.</p>
+      </div>
+
+      <div class="card">
+        <!-- Steps -->
+        <div class="steps" id="steps">
+          <div class="step active" id="step-1">
+            <div class="step-dot">1</div>
+            <span class="step-label">Upload</span>
+          </div>
+          <div class="step" id="step-2">
+            <div class="step-dot">2</div>
+            <span class="step-label">Analyse</span>
+          </div>
+          <div class="step" id="step-3">
+            <div class="step-dot">3</div>
+            <span class="step-label">Deliver</span>
+          </div>
+        </div>
+
+        <!-- Form -->
+        <div id="form-section">
+          <!-- File Drop Zone -->
+          <div class="field">
+            <label>Sales Data File <span class="req">*</span></label>
+            <div class="drop-zone" id="dropZone">
+              <input type="file" id="fileInput" accept=".csv,.xlsx,.xls" />
+              <span class="drop-icon">📊</span>
+              <div class="drop-title">Drop your file here</div>
+              <div class="drop-sub">CSV or XLSX · Max 10 MB</div>
+              <div id="fileBadge" style="display:none">
+                <span class="file-badge">
+                  <span>📎</span>
+                  <span id="fileName"></span>
+                  <span id="fileSize" style="opacity:.6"></span>
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Email -->
+          <div class="field">
+            <label>Recipient Email <span class="req">*</span></label>
+            <input type="email" id="emailInput" placeholder="executive@company.com" autocomplete="email" />
+          </div>
+
+          <!-- Report title -->
+          <div class="field">
+            <label>Report Title</label>
+            <input type="text" id="titleInput" placeholder="Q1 2026 Sales Intelligence Brief" value="Q1 2026 Sales Intelligence Brief" />
+          </div>
+
+          <!-- API Key -->
+          <div class="field">
+            <label>API Key <span class="req">*</span></label>
+            <input type="text" id="apiKeyInput" placeholder="X-API-Key (default: rabbitt-dev-key-change-in-prod)" />
+          </div>
+
+          <!-- Submit -->
+          <button class="btn-submit" id="submitBtn" onclick="handleSubmit()">
+            <span id="btnIcon">⚡</span>
+            <span id="btnText">Generate & Send Report</span>
+          </button>
+        </div>
+
+        <!-- Loading -->
+        <div id="loadingSection" style="display:none">
+          <div style="text-align:center; padding:12px 0 8px;">
+            <p style="font-family:'Syne',sans-serif; font-size:15px; font-weight:600; margin-bottom:4px;">Processing your data…</p>
+            <p style="font-size:13px; color:var(--muted);">Gemini is analysing your sales file and composing the brief.</p>
+          </div>
+          <div class="progress-bar-wrap">
+            <div class="progress-bar"></div>
+          </div>
+          <p style="font-size:11px; color:var(--muted); text-align:center; margin-top:10px; font-family:'DM Mono',monospace;">
+            Parsing data → AI analysis → Composing email → Dispatching…
+          </p>
+        </div>
+
+        <!-- Status messages -->
+        <div id="statusArea"></div>
+      </div>
+
+      <!-- Security Badges -->
+      <div class="sec-strip">
+        <span class="sec-badge"><span>🔑</span> API Key Auth</span>
+        <span class="sec-badge"><span>🛡️</span> Rate Limited</span>
+        <span class="sec-badge"><span>📦</span> Containerised</span>
+        <span class="sec-badge"><span>✅</span> File Validated</span>
+        <span class="sec-badge"><span>🔒</span> CORS Protected</span>
+      </div>
+    </main>
+
+    <!-- FOOTER -->
+    <footer>
+      <span><span class="footer-dot"></span> API Online</span>
+      <span>Rabbitt AI · Sales Insight Automator</span>
+      <a href="/docs" style="color:var(--orange); text-decoration:none;" target="_blank">Swagger Docs →</a>
+    </footer>
+  </div>
+
+  <script>
+    // ── Config ──────────────────────────────────────────────
+    const API_BASE = window.API_BASE || 'http://localhost:8000';
+
+    // ── DOM refs ────────────────────────────────────────────
+    const dropZone   = document.getElementById('dropZone');
+    const fileInput  = document.getElementById('fileInput');
+    const fileBadge  = document.getElementById('fileBadge');
+    const fileName   = document.getElementById('fileName');
+    const fileSize   = document.getElementById('fileSize');
+    const emailInput = document.getElementById('emailInput');
+    const titleInput = document.getElementById('titleInput');
+    const apiKeyInput= document.getElementById('apiKeyInput');
+    const submitBtn  = document.getElementById('submitBtn');
+    const statusArea = document.getElementById('statusArea');
+    const formSection= document.getElementById('form-section');
+    const loadingSection = document.getElementById('loadingSection');
+    const btnIcon    = document.getElementById('btnIcon');
+    const btnText    = document.getElementById('btnText');
+
+    let selectedFile = null;
+
+    // ── File handling ───────────────────────────────────────
+    fileInput.addEventListener('change', e => setFile(e.target.files[0]));
+
+    dropZone.addEventListener('dragover', e => {
+      e.preventDefault();
+      dropZone.classList.add('dragover');
+    });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+    dropZone.addEventListener('drop', e => {
+      e.preventDefault();
+      dropZone.classList.remove('dragover');
+      if (e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]);
+    });
+
+    function setFile(f) {
+      if (!f) return;
+      const ext = f.name.split('.').pop().toLowerCase();
+      if (!['csv','xlsx','xls'].includes(ext)) {
+        showToast('error', 'Invalid file type', 'Only .csv and .xlsx files are accepted.');
+        return;
+      }
+      if (f.size > 10 * 1024 * 1024) {
+        showToast('error', 'File too large', 'Maximum file size is 10 MB.');
+        return;
+      }
+      selectedFile = f;
+      fileName.textContent = f.name;
+      fileSize.textContent = formatBytes(f.size);
+      fileBadge.style.display = 'block';
+      dropZone.classList.add('has-file');
+      statusArea.innerHTML = '';
+      setStep(2);
+    }
+
+    function formatBytes(bytes) {
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1048576) return (bytes/1024).toFixed(1) + ' KB';
+      return (bytes/1048576).toFixed(1) + ' MB';
+    }
+
+    // ── Step indicator ──────────────────────────────────────
+    function setStep(n) {
+      for (let i = 1; i <= 3; i++) {
+        const el = document.getElementById(`step-${i}`);
+        el.className = 'step' + (i < n ? ' done' : i === n ? ' active' : '');
+        el.querySelector('.step-dot').textContent = i < n ? '✓' : String(i);
+      }
+    }
+
+    // ── Submit ──────────────────────────────────────────────
+    async function handleSubmit() {
+      if (!selectedFile) {
+        showToast('error', 'No file selected', 'Please upload a CSV or XLSX sales file first.');
+        return;
+      }
+      const email = emailInput.value.trim();
+      if (!email || !email.includes('@')) {
+        showToast('error', 'Invalid email', 'Please enter a valid recipient email address.');
+        emailInput.focus();
+        return;
+      }
+      const apiKey = apiKeyInput.value.trim() || 'rabbitt-dev-key-change-in-prod';
+
+      setLoading(true);
+      setStep(2);
+      statusArea.innerHTML = '';
+
+      const fd = new FormData();
+      fd.append('file', selectedFile);
+      fd.append('recipient_email', email);
+      fd.append('report_title', titleInput.value.trim() || 'Q1 2026 Sales Intelligence Brief');
+
+      try {
+        const res = await fetch(`${API_BASE}/api/v1/analyze`, {
+          method: 'POST',
+          headers: { 'X-API-Key': apiKey },
+          body: fd,
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          const msg = data.detail || `HTTP ${res.status}`;
+          throw new Error(Array.isArray(msg) ? msg.map(e=>e.msg).join(', ') : msg);
+        }
+
+        setStep(3);
+        showToast(
+          'success',
+          'Report dispatched! 🎉',
+          `AI summary sent to ${data.recipient}. ${data.rows_processed} rows processed.`,
+          data
+        );
+
+      } catch (err) {
+        setStep(2);
+        showToast('error', 'Something went wrong', err.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    // ── Loading state ────────────────────────────────────────
+    function setLoading(on) {
+      submitBtn.disabled = on;
+      loadingSection.style.display = on ? 'block' : 'none';
+      if (on) {
+        btnIcon.textContent = '';
+        btnText.textContent = 'Processing…';
+        // Insert spinner
+        const spin = document.createElement('div');
+        spin.className = 'spinner';
+        spin.id = 'spinnerEl';
+        btnText.before(spin);
+      } else {
+        const s = document.getElementById('spinnerEl');
+        if (s) s.remove();
+        btnIcon.textContent = '⚡';
+        btnText.textContent = 'Generate & Send Report';
+      }
+    }
+
+    // ── Toast messages ───────────────────────────────────────
+    function showToast(type, title, message, data) {
+      const icon = type === 'success' ? '✅' : '❌';
+      let extra = '';
+
+      if (type === 'success' && data) {
+        extra = `
+          <div class="stats-row" style="margin-top:16px;">
+            <div class="stat-card">
+              <div class="stat-value">${data.rows_processed}</div>
+              <div class="stat-label">Rows Parsed</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value">AI</div>
+              <div class="stat-label">Gemini LLM</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value">📧</div>
+              <div class="stat-label">Email Sent</div>
+            </div>
+          </div>
+          ${data.summary_preview ? `<div class="preview-box">${data.summary_preview}</div>` : ''}
+        `;
+      }
+
+      statusArea.innerHTML = `
+        <div class="toast ${type}">
+          <span class="toast-icon">${icon}</span>
+          <div class="toast-body">
+            <strong>${title}</strong>
+            <p>${message}</p>
+          </div>
+        </div>
+        ${extra}
+      `;
+    }
+
+    // ── Health ping ──────────────────────────────────────────
+    (async function pingHealth() {
+      try {
+        const res = await fetch(`${API_BASE}/health`);
+        if (!res.ok) throw new Error();
+        document.querySelector('.footer-dot').style.background = 'var(--success)';
+      } catch {
+        document.querySelector('.footer-dot').style.background = 'var(--error)';
+        document.querySelector('footer span:first-child').innerHTML =
+          '<span class="footer-dot" style="background:var(--error)"></span> API Offline';
+      }
+    })();
+  </script>
+</body>
+</html>
